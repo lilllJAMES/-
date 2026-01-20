@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto SuperTrend Monitor</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        [v-cloak] { display: none; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: radial-gradient(1200px 500px at 10% 10%, #0b0f1e 0%, #0b0f1e 30%, #121329 60%, #131135 100%); color: #e6edf3; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header {
+            text-align: center;
+            padding: 40px 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #6366f1, #a855f7, #0ea5e9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #64748b;
+            font-size: 1rem;
+        }
+        .api-badge { background: #238636; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+        .status-bar { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; background: rgba(22,27,34,0.6); border: 1px solid #2b3141; border-radius: 14px; margin-bottom: 16px; backdrop-filter: blur(4px); flex-wrap: wrap; gap: 10px; }
+        .status-left { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; color: #7d8590; font-size: 0.85rem; }
+        .status-item { display: flex; align-items: center; gap: 6px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #3fb950; animation: pulse 2s infinite; }
+        .status-dot.loading { background: #d29922; }
+        .status-dot.error { background: #f85149; animation: none; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .controls { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; justify-content: center; }
+        .btn { padding: 10px 18px; border: 1px solid #30363d; border-radius: 999px; background: #1b2230; color: #e6edf3; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; }
+        .btn:hover { background: #283046; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn.active { background: #5b5299; border-color: #8b7cf7; color: #fff; }
+        .progress-bar { width: 100%; height: 4px; background: #30363d; border-radius: 2px; overflow: hidden; margin-top: 8px; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #238636, #3fb950); transition: width 0.3s ease; width: 0%; }
+        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+        .stat-card { background: rgba(22,27,34,0.6); border: 1px solid #2b3141; border-radius: 16px; padding: 18px; text-align: center; }
+        .stat-card .label { color: #7d8590; font-size: 0.75rem; margin-bottom: 6px; text-transform: uppercase; }
+        .stat-card .value { font-size: 1.6rem; font-weight: 700; }
+        .stat-card .value.green { color: #3fb950; } .stat-card .value.red { color: #f85149; } .stat-card .value.yellow { color: #d29922; } .stat-card .value.blue { color: #58a6ff; }
+        .table-container { background: rgba(22,27,34,0.6); border: 1px solid #2b3141; border-radius: 16px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        th { background: transparent; padding: 12px 16px; text-align: left; font-weight: 500; color: #7d8590; font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid #30363d; white-space: nowrap; }
+        td { padding: 12px 16px; border-bottom: 1px solid #21262d; vertical-align: middle; }
+        tr:hover { background: #1c2128; }
+        .coin-info { display: flex; align-items: center; gap: 10px; }
+        .coin-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #1b2230; overflow: hidden; }
+        .coin-icon img { width: 70%; height: 70%; object-fit: contain; display: block; }
+        .coin-icon-fallback { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: #ffffff; }
+        .coin-name { font-weight: 500; color: #e6edf3; font-size: 0.9rem; }
+        .coin-symbol { color: #7d8590; font-size: 0.8rem; }
+        .price { font-weight: 500; color: #e6edf3; font-size: 0.9rem; }
+        .trend-badge { display: flex; flex-direction: column; align-items: center; min-width: 52px; border-radius: 6px; overflow: hidden; }
+        .trend-badge .tf { font-size: 0.65rem; padding: 2px 6px; background: rgba(255,255,255,0.1); color: #7d8590; width: 100%; text-align: center; }
+        .trend-badge .signal { font-size: 0.7rem; font-weight: 600; padding: 4px 8px; width: 100%; text-align: center; }
+        .trend-badge.buy { background: rgba(63, 185, 80, 0.15); border: 1px solid rgba(63, 185, 80, 0.3); }
+        .trend-badge.buy .signal { color: #3fb950; }
+        .trend-badge.sell { background: rgba(248, 81, 73, 0.15); border: 1px solid rgba(248, 81, 73, 0.3); }
+        .trend-badge.sell .signal { color: #f85149; }
+        .trend-badge.neutral { background: rgba(210, 153, 34, 0.15); border: 1px solid rgba(210, 153, 34, 0.3); }
+        .trend-badge.neutral .signal { color: #d29922; }
+        .trend-badge.loading { background: rgba(88, 166, 255, 0.1); border: 1px solid rgba(88, 166, 255, 0.2); }
+        .trend-badge.loading .signal { color: #58a6ff; }
+        .mini-chart { width: 80px; height: 32px; display: block; }
+        .score-badge { display: inline-block; padding: 6px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; border: 1px solid #30363d; }
+        .score-strong-buy { color: #3fb950; background: rgba(63,185,80,0.15); border-color: rgba(63,185,80,0.3); }
+        .score-buy { color: #2ea043; background: rgba(46,160,67,0.12); border-color: rgba(46,160,67,0.25); }
+        .score-neutral { color: #d29922; background: rgba(210,153,34,0.12); border-color: rgba(210,153,34,0.25); }
+        .score-sell { color: #f85149; background: rgba(248,81,73,0.12); border-color: rgba(248,81,73,0.25); }
+        .score-strong-sell { color: #da3633; background: rgba(218,54,51,0.12); border-color: rgba(218,54,51,0.25); }
+        @media (max-width: 900px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+    </style>
+</head>
+<body>
+    <div id="app" v-cloak class="container">
+        <header class="header">
+            <h1>🚀 Crypto SuperTrend Dashboard</h1>
+            <p>实时监控市值前100加密货币的多周期超级趋势指标 <span class="api-badge">OKX API</span></p>
+        </header>
+
+        <div class="status-bar">
+            <div class="status-left">
+                <div class="status-item">
+                    <span :class="['status-dot', loading ? 'loading' : '']"></span>
+                    <span>{{ loading ? '正在连接...' : '已连接' }}</span>
+                </div>
+                <div class="status-item">
+                    <span>最后更新：</span>
+                    <span>{{ lastUpdatedFormatted }}</span>
+                </div>
+            </div>
+            <div>
+                <button class="btn" @click="fetchData" :disabled="loading">{{ loading ? '⏳ 加载中...' : '🔄 刷新数据' }}</button>
+            </div>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" :style="{ width: loadPercent + '%' }"></div>
+        </div>
+
+        <div class="controls">
+            <input v-model="searchQuery" type="text" placeholder="搜索币种..." class="btn" style="min-width:260px;">
+            <button class="btn" @click="sortBy('rank')">按排名排序 {{ sortKey==='rank' ? (sortOrder==='asc'?'↑':'↓') : '' }}</button>
+            <button class="btn" @click="sortBy('price')">按价格排序 {{ sortKey==='price' ? (sortOrder==='asc'?'↑':'↓') : '' }}</button>
+            <button class="btn" :class="{ active: filterStatus==='all' }" @click="setFilter('all')">全部</button>
+            <button class="btn" :class="{ active: filterStatus==='bullish' }" @click="setFilter('bullish')">🟢 看涨</button>
+            <button class="btn" :class="{ active: filterStatus==='bearish' }" @click="setFilter('bearish')">🔴 看跌</button>
+            <button class="btn" :class="{ active: filterStatus==='neutral' }" @click="setFilter('neutral')">🟡 中性</button>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-card"><div class="label">看涨信号</div><div class="value green">{{ stats.bullish }}</div></div>
+            <div class="stat-card"><div class="label">看跌信号</div><div class="value red">{{ stats.bearish }}</div></div>
+            <div class="stat-card"><div class="label">中性信号</div><div class="value yellow">{{ stats.neutral }}</div></div>
+            <div class="stat-card"><div class="label">已加载</div><div class="value blue">{{ loadedCount }}/{{ coins.length }}</div></div>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>币种</th>
+                        <th>价格</th>
+                        <th>15分钟</th>
+                        <th>1小时</th>
+                        <th>4小时</th>
+                        <th>日线</th>
+                        <th>综合评分</th>
+                        <th>趋势图</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="coin in filteredCoins" :key="coin.symbol">
+                        <td>{{ coin.rank }}</td>
+                        <td>
+                            <div class="coin-info">
+                                <div class="coin-icon">
+                                    <img v-if="coin.image" :src="coin.image" :alt="coin.symbol" @error="coin.image = null">
+                                    <div v-else class="coin-icon-fallback" :style="{ background: coinColor(coin.symbol) }">
+                                        {{ coin.symbol.slice(0,3) }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="coin-name">{{ coin.name }}</div>
+                                    <div class="coin-symbol">{{ coin.symbol }}/USDT</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td><div class="price">${{ formatPrice(coin.price) }}</div></td>
+                        <td><trend-badge label="15m" :trend="coin.trend_15m"></trend-badge></td>
+                        <td><trend-badge label="1h" :trend="coin.trend_1h"></trend-badge></td>
+                        <td><trend-badge label="4h" :trend="coin.trend_4h"></trend-badge></td>
+                        <td><trend-badge label="1d" :trend="coin.trend_1d"></trend-badge></td>
+                        <td class="score-cell"><span :class="['score-badge', scoreInfo(coin).klass]">{{ scoreInfo(coin).label }}</span></td>
+                        <td v-html="generateMiniChart(coin)"></td>
+                    </tr>
+                    <tr v-if="filteredCoins.length === 0">
+                        <td colspan="9" style="text-align:center;padding:40px;">暂无数据或正在加载…</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted } = Vue;
+
+        const TrendBadge = {
+            props: ['trend','label'],
+            template: `
+                <div :class="klass" class="trend-badge">
+                    <div class="tf">{{ label }}</div>
+                    <div class="signal">{{ text }}</div>
+                </div>
+            `,
+            computed: {
+                klass() {
+                    if (this.trend === 'UP' ) return 'buy';
+                    if (this.trend === 'DOWN') return 'sell';
+                    if (this.trend === 'Loading') return 'loading';
+                    return 'neutral';
+                },
+                text() {
+                    if (this.trend === 'UP') return 'BUY';
+                    if (this.trend === 'DOWN') return 'SELL';
+                    if (this.trend === 'Loading') return '...';
+                    if (this.trend === 'Error') return 'Error';
+                    return 'N/A';
+                }
+            }
+        };
+
+        function calculateSupertrend(ohlc, period = 10, multiplier = 3) {
+            if (ohlc.length < period + 1) return 'N/A';
+
+            const high = ohlc.map(c => c.high);
+            const low = ohlc.map(c => c.low);
+            const close = ohlc.map(c => c.close);
+
+            const tr = [];
+            for (let i = 0; i < ohlc.length; i++) {
+                if (i === 0) {
+                    tr.push(high[i] - low[i]);
+                } else {
+                    const tr1 = high[i] - low[i];
+                    const tr2 = Math.abs(high[i] - close[i - 1]);
+                    const tr3 = Math.abs(low[i] - close[i - 1]);
+                    tr.push(Math.max(tr1, tr2, tr3));
+                }
+            }
+
+            const atr = [];
+            let prevAtr = tr[0];
+            atr.push(prevAtr);
+            const alpha = 1 / period;
+            for (let i = 1; i < tr.length; i++) {
+                const curAtr = alpha * tr[i] + (1 - alpha) * prevAtr;
+                atr.push(curAtr);
+                prevAtr = curAtr;
+            }
+
+            const basicUpper = [];
+            const basicLower = [];
+            for (let i = 0; i < ohlc.length; i++) {
+                const hl2 = (high[i] + low[i]) / 2;
+                basicUpper.push(hl2 + multiplier * atr[i]);
+                basicLower.push(hl2 - multiplier * atr[i]);
+            }
+
+            const finalUpper = [];
+            const finalLower = [];
+            const supertrend = [];
+            const trend = [];
+
+            finalUpper[0] = basicUpper[0];
+            finalLower[0] = basicLower[0];
+            supertrend[0] = finalLower[0];
+            trend[0] = true;
+
+            for (let i = 1; i < ohlc.length; i++) {
+                if (basicUpper[i] < finalUpper[i - 1] || close[i - 1] > finalUpper[i - 1]) {
+                    finalUpper[i] = basicUpper[i];
+                } else {
+                    finalUpper[i] = finalUpper[i - 1];
+                }
+
+                if (basicLower[i] > finalLower[i - 1] || close[i - 1] < finalLower[i - 1]) {
+                    finalLower[i] = basicLower[i];
+                } else {
+                    finalLower[i] = finalLower[i - 1];
+                }
+
+                if (supertrend[i - 1] === finalUpper[i - 1] && close[i] <= finalUpper[i]) {
+                    trend[i] = false;
+                    supertrend[i] = finalUpper[i];
+                } else if (supertrend[i - 1] === finalUpper[i - 1] && close[i] > finalUpper[i]) {
+                    trend[i] = true;
+                    supertrend[i] = finalLower[i];
+                } else if (supertrend[i - 1] === finalLower[i - 1] && close[i] >= finalLower[i]) {
+                    trend[i] = true;
+                    supertrend[i] = finalLower[i];
+                } else if (supertrend[i - 1] === finalLower[i - 1] && close[i] < finalLower[i]) {
+                    trend[i] = false;
+                    supertrend[i] = finalUpper[i];
+                } else {
+                    if (close[i] > finalUpper[i - 1]) {
+                        trend[i] = true;
+                    } else if (close[i] < finalLower[i - 1]) {
+                        trend[i] = false;
+                    } else {
+                        trend[i] = trend[i - 1];
+                    }
+                    supertrend[i] = trend[i] ? finalLower[i] : finalUpper[i];
+                }
+            }
+
+            return trend[trend.length - 1] ? 'UP' : 'DOWN';
+        }
+
+        async function fetchOkxTickers() {
+            const url = 'https://www.okx.com/api/v5/market/tickers?instType=SPOT';
+            const res = await fetch(url);
+            const json = await res.json();
+            if (json.code !== '0') throw new Error('OKX tickers error: ' + JSON.stringify(json));
+            return json.data;
+        }
+
+        async function fetchOkxCandles(instId, bar) {
+            const url = `https://www.okx.com/api/v5/market/candles?instId=${encodeURIComponent(instId)}&bar=${encodeURIComponent(bar)}&limit=100`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const json = await res.json();
+            if (json.code !== '0') throw new Error('OKX candles error: ' + JSON.stringify(json));
+            const candles = json.data || [];
+            if (!candles.length) return null;
+
+            const ohlc = candles.map(c => ({
+                ts: Number(c[0]),
+                open: Number(c[1]),
+                high: Number(c[2]),
+                low: Number(c[3]),
+                close: Number(c[4])
+            })).sort((a, b) => a.ts - b.ts);
+
+            return ohlc;
+        }
+
+        createApp({
+            components: { TrendBadge },
+            setup() {
+                const coins = ref([]);
+                const loading = ref(false);
+                const lastUpdated = ref(null);
+                const searchQuery = ref('');
+                const sortKey = ref('rank');
+                const sortOrder = ref('asc');
+                const filterStatus = ref('all');
+
+                const formatPrice = (price) => {
+                    if (price == null || isNaN(price)) return '-';
+                    if (price < 1) return price.toFixed(6);
+                    if (price < 10) return price.toFixed(4);
+                    return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                };
+
+                const lastUpdatedFormatted = computed(() => {
+                    if (!lastUpdated.value) return '从未';
+                    return new Date(lastUpdated.value).toLocaleString('zh-CN');
+                });
+
+                const filteredCoins = computed(() => {
+                    let result = coins.value.slice();
+
+                    if (searchQuery.value) {
+                        const q = searchQuery.value.toLowerCase();
+                        result = result.filter(c =>
+                            c.name.toLowerCase().includes(q) ||
+                            c.symbol.toLowerCase().includes(q)
+                        );
+                    }
+
+                    if (filterStatus.value !== 'all') {
+                        result = result.filter(c => {
+                            const arr = [c.trend_15m, c.trend_1h, c.trend_4h, c.trend_1d];
+                            const buys = arr.filter(x => x === 'UP').length;
+                            const sells = arr.filter(x => x === 'DOWN').length;
+                            const category = buys > sells ? 'bullish' : sells > buys ? 'bearish' : 'neutral';
+                            return category === filterStatus.value;
+                        });
+                    }
+
+                    result.sort((a, b) => {
+                        let valA = a[sortKey.value];
+                        let valB = b[sortKey.value];
+
+                        if (typeof valA === 'string') valA = valA.toLowerCase();
+                        if (typeof valB === 'string') valB = valB.toLowerCase();
+
+                        if (valA < valB) return sortOrder.value === 'asc' ? -1 : 1;
+                        if (valA > valB) return sortOrder.value === 'asc' ? 1 : -1;
+                        return 0;
+                    });
+
+                    return result;
+                });
+
+                const setFilter = (status) => {
+                    filterStatus.value = status;
+                };
+
+                const sortBy = (key) => {
+                    if (sortKey.value === key) {
+                        sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        sortKey.value = key;
+                        sortOrder.value = 'asc';
+                    }
+                };
+
+                const loadedCount = computed(() => {
+                    return coins.value.filter(c => !['Loading'].includes(c.trend_15m) && !['Loading'].includes(c.trend_1h) && !['Loading'].includes(c.trend_4h) && !['Loading'].includes(c.trend_1d)).length;
+                });
+
+                const loadPercent = computed(() => {
+                    if (!coins.value.length) return 0;
+                    return Math.round((loadedCount.value / coins.value.length) * 100);
+                });
+
+                const stats = computed(() => {
+                    let bullish = 0, bearish = 0, neutral = 0;
+                    coins.value.forEach(c => {
+                        const arr = [c.trend_15m, c.trend_1h, c.trend_4h, c.trend_1d];
+                        const buys = arr.filter(x => x === 'UP').length;
+                        const sells = arr.filter(x => x === 'DOWN').length;
+                        if (buys > sells) bullish++;
+                        else if (sells > buys) bearish++;
+                        else neutral++;
+                    });
+                    return { bullish, bearish, neutral };
+                });
+
+                function scoreInfo(coin) {
+                    const arr = [coin.trend_15m, coin.trend_1h, coin.trend_4h, coin.trend_1d];
+                    const buys = arr.filter(x => x === 'UP').length;
+                    const sells = arr.filter(x => x === 'DOWN').length;
+                    const diff = buys - sells;
+                    if (diff >= 2) return { label: '强看涨', klass: 'score-strong-buy' };
+                    if (diff === 1) return { label: '看涨', klass: 'score-buy' };
+                    if (diff === 0) return { label: '中性', klass: 'score-neutral' };
+                    if (diff === -1) return { label: '看跌', klass: 'score-sell' };
+                    return { label: '强看跌', klass: 'score-strong-sell' };
+                }
+
+                function generateMiniChart(coin) {
+                    if (!coin || !coin.sparkline || coin.sparkline.length < 2) return '<svg class="mini-chart"></svg>';
+                    
+                    const values = coin.sparkline;
+                    const min = Math.min(...values);
+                    const max = Math.max(...values);
+                    const range = max - min || 1;
+                    
+                    const width = 120;
+                    const height = 40;
+                    const padding = 2;
+                    
+                    // 坐标计算
+                    const points = values.map((v, i) => {
+                        const x = (i / (values.length - 1)) * width;
+                        const y = height - padding - ((v - min) / range) * (height - 2 * padding);
+                        return `${x},${y}`;
+                    }).join(' ');
+
+                    const isUp = values[values.length - 1] >= values[0];
+                    const strokeColor = isUp ? '#22c55e' : '#ef4444';
+                    const fillColor = isUp ? '#22c55e' : '#ef4444';
+                    
+                    // 渐变填充路径 (闭合到底部)
+                    const fillPath = `M0,${height} L${points.split(' ')[0]} ${points.replaceAll(',', ' ')} L${width},${height} Z`;
+
+                    return `
+                        <svg class="mini-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+                            <defs>
+                                <linearGradient id="grad-${coin.symbol}" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" stop-color="${fillColor}" stop-opacity="0.3"/>
+                                    <stop offset="100%" stop-color="${fillColor}" stop-opacity="0.0"/>
+                                </linearGradient>
+                            </defs>
+                            <path d="${fillPath}" fill="url(#grad-${coin.symbol})" stroke="none" />
+                            <polyline points="${points}" fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                        </svg>
+                    `;
+                }
+
+                function coinIconUrl(symbol) {
+                    if (!symbol) return '';
+                    return `https://assets.coincap.io/assets/icons/${symbol.toLowerCase()}@2x.png`;
+                }
+
+                function coinColor(symbol) {
+                    const colors = { BTC:'#F7931A', ETH:'#627EEA', BNB:'#F3BA2F', XRP:'#23292F', SOL:'#00FFA3' };
+                    if (colors[symbol]) return colors[symbol];
+                    let hash = 0;
+                    for (let i=0;i<symbol.length;i++) hash = symbol.charCodeAt(i) + ((hash<<5) - hash);
+                    const hue = Math.abs(hash) % 360;
+                    return `hsl(${hue}, 60%, 50%)`;
+                }
+
+                const fetchData = async () => {
+                    loading.value = true;
+                    try {
+                        const tickers = await fetchOkxTickers();
+                        const usdtTickers = tickers.filter(t =>
+                            typeof t.instId === 'string' && t.instId.endsWith('-USDT')
+                        );
+
+                        usdtTickers.sort((a, b) => {
+                            const va = Number(a.volCcy24h || 0);
+                            const vb = Number(b.volCcy24h || 0);
+                            return vb - va;
+                        });
+
+                        const top = usdtTickers.slice(0, 100);
+
+                        const baseCoins = top.map((t, idx) => {
+                            const instId = t.instId;
+                            const base = instId.split('-')[0];
+                            const price = Number(t.last || 0);
+                            return {
+                                rank: idx + 1,
+                                name: base,
+                                symbol: base,
+                                price,
+                                image: coinIconUrl(base),
+                                trend_15m: 'Loading',
+                                trend_1h: 'Loading',
+                                trend_4h: 'Loading',
+                                trend_1d: 'Loading',
+                                instId
+                            };
+                        });
+
+                        coins.value = baseCoins;
+                        lastUpdated.value = new Date().toISOString();
+
+                        const tasks = [];
+                        const bars = [
+                            { bar: '15m', key: 'trend_15m' },
+                            { bar: '1H', key: 'trend_1h' },
+                            { bar: '4H', key: 'trend_4h' },
+                            { bar: '1D', key: 'trend_1d' }
+                        ];
+
+                        baseCoins.forEach((coin, index) => {
+                            bars.forEach(({ bar, key }) => {
+                                tasks.push({ index, instId: coin.instId, bar, key });
+                            });
+                        });
+
+                        const concurrency = 3;
+                        const delayBetweenRequests = 100; // ms
+                        let active = 0;
+                        let cursor = 0;
+
+                        return new Promise(resolve => {
+                            const next = () => {
+                                if (cursor >= tasks.length && active === 0) {
+                                    resolve();
+                                    return;
+                                }
+                                while (active < concurrency && cursor < tasks.length) {
+                                    const task = tasks[cursor++];
+                                    active++;
+                                    
+                                    // 简单的延迟执行
+                                    setTimeout(() => {
+                                        // 重试逻辑包装
+                                        const fetchWithRetry = async (retries = 3) => {
+                                            try {
+                                                const ohlc = await fetchOkxCandles(task.instId, task.bar);
+                                                return ohlc;
+                                            } catch (err) {
+                                                if (retries > 0 && err.message.includes('429')) {
+                                                    await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000));
+                                                    return fetchWithRetry(retries - 1);
+                                                }
+                                                throw err;
+                                            }
+                                        };
+
+                                        fetchWithRetry()
+                                            .then(ohlc => {
+                                                let trend = 'Error';
+                                                if (ohlc && ohlc.length) {
+                                                    trend = calculateSupertrend(ohlc, 10, 3);
+                                                    // 保存最近24根K线收盘价用于绘图 (仅对15m周期或首个成功获取的周期保存)
+                                                    if (task.bar === '15m' || !coins.value[task.index].sparkline) {
+                                                        coins.value[task.index].sparkline = ohlc.slice(-24).map(c => c.close);
+                                                    }
+                                                } else if (ohlc === null) {
+                                                    trend = 'N/A';
+                                                }
+                                                coins.value[task.index][task.key] = trend;
+                                            })
+                                            .catch((e) => {
+                                                // console.warn(`Failed ${task.instId} ${task.bar}`, e);
+                                                coins.value[task.index][task.key] = 'Error';
+                                            })
+                                            .finally(() => {
+                                                loadedCount.value++;
+                                                active--;
+                                                next();
+                                            });
+                                    }, delayBetweenRequests * (active + 1)); // 错开启动时间
+                                }
+                            };
+                            next();
+                        });
+                    } catch (e) {
+                        console.error('Fetch error', e);
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                onMounted(() => {
+                    fetchData();
+                    setInterval(fetchData, 150000);
+                });
+
+                return {
+                    coins,
+                    loading,
+                    lastUpdatedFormatted,
+                    searchQuery,
+                    filteredCoins,
+                    fetchData,
+                    formatPrice,
+                    sortKey,
+                    sortOrder,
+                    sortBy,
+                    filterStatus,
+                    setFilter,
+                    loadedCount,
+                    loadPercent,
+                    stats,
+                    coinColor,
+                    generateMiniChart,
+                    scoreInfo
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
