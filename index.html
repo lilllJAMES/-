@@ -367,9 +367,14 @@
             }
             .mobile-card:active { transform: scale(0.98); }
             
-            /* Compact Row 1: Header */
-            .mc-row-top { display: flex; justify-content: space-between; align-items: center; }
-            .mc-left { display: flex; align-items: center; gap: 8px; }
+            /* Compact Row 1: Header + Chart + Price */
+            .mc-row-top { 
+                display: grid; 
+                grid-template-columns: auto 1fr auto; 
+                align-items: center; 
+                gap: 8px;
+            }
+            .mc-left { display: flex; align-items: center; gap: 6px; }
             .mc-rank { 
                 font-size: 0.7rem; color: #8b949e; background: rgba(255,255,255,0.05); 
                 padding: 2px 4px; border-radius: 4px; min-width: 20px; text-align: center;
@@ -379,30 +384,44 @@
                 width: 24px; height: 24px; border-radius: 50%; display: flex; 
                 align-items: center; justify-content: center; font-size: 10px; color: #fff; font-weight: bold;
             }
-            .mc-symbol { font-weight: 700; font-size: 1rem; color: #c9d1d9; }
+            .mc-symbol { font-weight: 700; font-size: 1rem; color: #c9d1d9; white-space: nowrap; }
             
-            .mc-right { display: flex; flex-direction: column; align-items: flex-end; gap: 0px; }
+            /* Center Chart in Row 1 */
+            .mc-chart-container { 
+                width: 100%; 
+                height: 32px; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center;
+                overflow: hidden;
+            }
+            .mc-chart { width: 100%; height: 100%; opacity: 1; }
+            
+            .mc-right { display: flex; flex-direction: column; align-items: flex-end; gap: 0px; min-width: 70px; }
             .mc-price { font-size: 1rem; font-weight: 600; color: #f0f6fc; }
             .mc-change { font-size: 0.75rem; font-weight: 500; }
             
-            /* Compact Row 2: Trends + Chart */
-            .mc-row-bot { display: flex; justify-content: space-between; align-items: center; margin-top: 2px; }
-            .mc-trends { display: flex; gap: 4px; }
+            /* Compact Row 2: Trends Only (Centered Grid) */
+            .mc-row-bot { margin-top: 6px; }
+            .mc-trends { 
+                display: grid; 
+                grid-template-columns: repeat(5, 1fr); 
+                gap: 4px; 
+                width: 100%;
+            }
             .trend-pill {
-                padding: 2px 6px;
+                padding: 3px 0;
                 border-radius: 4px;
                 font-size: 0.65rem;
                 font-weight: 700;
                 color: #fff;
-                min-width: 28px;
                 text-align: center;
                 background: #30363d; /* default neutral */
+                width: 100%;
             }
             .trend-pill.up { background: rgba(63, 185, 80, 0.4); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.5); }
             .trend-pill.down { background: rgba(248, 81, 73, 0.4); color: #f85149; border: 1px solid rgba(248, 81, 73, 0.5); }
             .trend-pill.loading { opacity: 0.5; animation: pulse 1.5s infinite; }
-            
-            .mc-chart { height: 24px; width: 60px; opacity: 0.8; }
             
             .mobile-card-footer { display: none; }
             
@@ -446,39 +465,8 @@
          -->
         <header class="header">
             <h1>🚀 Crypto SuperTrend Dashboard</h1>
-            <p>实时监控市值前250加密货币的多周期超级趋势指标 <span class="api-badge">MEXC API</span></p>
-            <div style="position: absolute; top: 10px; right: 10px;">
-                <button @click="showSettings = true" class="btn" style="padding: 5px 10px; font-size: 1.2rem;">⚙️</button>
-            </div>
+            <p>实时监控市值前250加密货币的多周期超级趋势指标 <span class="api-badge">OKX API</span></p>
         </header>
-
-        <!-- Settings Modal -->
-        <div v-if="showSettings" class="modal-overlay" @click.self="showSettings = false">
-            <div class="modal-content" style="max-width: 500px;">
-                <div class="modal-header">
-                    <h3>⚙️ API 设置</h3>
-                    <button class="close-btn" @click="showSettings = false">×</button>
-                </div>
-                <div class="modal-body">
-                    <p style="margin-bottom: 15px; color: #8b949e;">
-                        由于浏览器安全策略 (CORS) 和网络限制，在 GitHub Pages 等静态托管环境运行时，需要配置 API 代理地址。
-                    </p>
-                    
-                    <div style="margin-bottom: 20px;">
-                        <label style="display:block; margin-bottom:5px; font-weight:bold;">Cloudflare Worker URL</label>
-                        <input type="text" v-model="apiBaseUrl" placeholder="https://your-worker.workers.dev" 
-                               style="width: 100%; padding: 10px; background: #0d1117; border: 1px solid #30363d; color: #c9d1d9; border-radius: 6px;">
-                        <p style="font-size: 0.8rem; color: #8b949e; margin-top: 5px;">
-                            请部署提供的 <code>cf_worker.js</code> 到您的 Cloudflare Workers，并将生成的 URL 填入此处。
-                        </p>
-                    </div>
-
-                    <div style="text-align: right;">
-                        <button class="btn" @click="saveApiSettings">保存并刷新</button>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <div class="status-bar">
             <div class="status-left">
@@ -722,6 +710,9 @@
                         <div class="skeleton" style="width: 24px; height: 24px; border-radius: 50%;"></div>
                         <div class="skeleton" style="width: 40px; height: 16px;"></div>
                      </div>
+                     <div class="mc-chart-container">
+                        <div class="skeleton" style="width: 100%; height: 32px;"></div>
+                     </div>
                      <div class="mc-right">
                         <div class="skeleton" style="width: 60px; height: 16px; margin-bottom: 2px;"></div>
                         <div class="skeleton" style="width: 40px; height: 12px;"></div>
@@ -729,9 +720,8 @@
                  </div>
                  <div class="mc-row-bot">
                      <div class="mc-trends">
-                        <div class="skeleton" style="width: 28px; height: 16px;" v-for="j in 5"></div>
+                        <div class="skeleton" style="width: 100%; height: 16px;" v-for="j in 5"></div>
                      </div>
-                     <div class="skeleton" style="width: 60px; height: 20px;"></div>
                  </div>
             </div>
 
@@ -749,6 +739,10 @@
                         <span class="mc-symbol">{{ coin.symbol }}</span>
                     </div>
                     
+                    <div class="mc-chart-container">
+                        <div class="mc-chart" v-html="generateMiniChart(coin)"></div>
+                    </div>
+                    
                     <div class="mc-right">
                         <span class="mc-price">${{ formatPrice(coin.price) }}</span>
                         <span class="mc-change" :style="{ color: coin.changePercent >= 0 ? '#3fb950' : '#f85149' }">
@@ -756,15 +750,11 @@
                         </span>
                     </div>
                     
-                    <!-- Star Button Absolute or Inline? Let's make it inline next to rank or overlay? 
-                         For simplicity, let's put it absolute top right but handle spacing.
-                         Actually, let's just not include it in the compact row to save space, or put it next to symbol.
-                         Let's put it next to symbol.
-                    -->
+                    <!-- Star Button Absolute -->
                     <button class="btn-star" :class="{ active: isSelected(coin) }" @click.stop="toggleSelection(coin)" style="position: absolute; top: 8px; right: -2px; opacity: 0.3; transform: scale(0.8);">★</button>
                 </div>
                 
-                <!-- Row 2: Trends + Chart -->
+                <!-- Row 2: Trends Only -->
                 <div class="mc-row-bot">
                     <div class="mc-trends">
                         <div class="trend-pill" :class="{'up': coin.trend_15m === 'UP', 'down': coin.trend_15m === 'DOWN', 'loading': coin.trend_15m === 'Loading'}">15m</div>
@@ -773,9 +763,6 @@
                         <div class="trend-pill" :class="{'up': coin.trend_1d === 'UP', 'down': coin.trend_1d === 'DOWN', 'loading': coin.trend_1d === 'Loading'}">1D</div>
                         <div class="trend-pill" :class="{'up': coin.trend_1w === 'UP', 'down': coin.trend_1w === 'DOWN', 'loading': coin.trend_1w === 'Loading'}">1W</div>
                     </div>
-                    
-                    <!-- Mini Chart (Compact) -->
-                    <div class="mc-chart" v-html="generateMiniChart(coin, 60, 24)"></div>
                 </div>
             </div>
             
@@ -984,59 +971,24 @@
         // 2. 数据清洗：将原始 API 响应格式化为应用内部使用的标准 OHLC 对象。
         // ==================================================================================
 
-        async function fetchMexcTickers(apiUrl) {
-            // 使用配置的 API 地址
-            const url = apiUrl;
+        async function fetchOkxTickers() {
+            const url = 'https://www.okx.com/api/v5/market/tickers?instType=SPOT';
             const res = await fetch(url);
-            if (!res.ok) throw new Error('HTTP ' + res.status);
             const json = await res.json();
-            
-            // MEXC 返回数组直接包含所有 Tickers
-            if (!Array.isArray(json)) throw new Error('MEXC tickers error: invalid format');
-            
-            return json.map(t => {
-                // 仅处理 USDT 交易对
-                if (!t.symbol.endsWith('USDT')) return null;
-                
-                return {
-                    // 构造兼容 OKX 格式的 instId (e.g., BTC-USDT)
-                    instId: t.symbol.replace(/USDT$/, '-USDT'),
-                    last: t.lastPrice,
-                    volCcy24h: t.quoteVolume, // 24h 成交额 (USDT)
-                    open24h: t.openPrice,     // 24h 开盘价
-                    high24h: t.highPrice,
-                    low24h: t.lowPrice
-                };
-            }).filter(t => t !== null);
+            if (json.code !== '0') throw new Error('OKX tickers error: ' + JSON.stringify(json));
+            return json.data;
         }
 
-        async function fetchMexcCandles(instId, bar, limit = 100, baseUrl = '') {
-            // 转换 instId: "BTC-USDT" -> "BTCUSDT"
-            const symbol = instId.replace('-', '');
-            
-            // 转换时间周期
-            const intervalMap = {
-                '15m': '15m',
-                '1H': '60m',
-                '4H': '4h',
-                '1D': '1d'
-            };
-            const interval = intervalMap[bar] || '60m';
-            
-            // 使用配置的 API 地址
-            // Remove leading slash if baseUrl has trailing slash
-            if (baseUrl && baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
-            const url = `${baseUrl}/api/candles?symbol=${symbol}&interval=${interval}&limit=${limit}`;
-            
+        async function fetchOkxCandles(instId, bar, limit = 100) {
+            const url = `https://www.okx.com/api/v5/market/candles?instId=${encodeURIComponent(instId)}&bar=${encodeURIComponent(bar)}&limit=${limit}`;
             const res = await fetch(url);
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const json = await res.json();
-            
-            if (!Array.isArray(json)) throw new Error('MEXC candles error: ' + JSON.stringify(json));
-            if (json.length === 0) return null;
+            if (json.code !== '0') throw new Error('OKX candles error: ' + JSON.stringify(json));
+            const candles = json.data || [];
+            if (!candles.length) return null;
 
-            // MEXC Format: [time, open, high, low, close, vol, closeTime, quoteVol]
-            const ohlc = json.map(c => ({
+            const ohlc = candles.map(c => ({
                 ts: Number(c[0]),
                 open: Number(c[1]),
                 high: Number(c[2]),
@@ -1222,25 +1174,6 @@
                 const filterStatus = ref('all');
                 const selectedCoins = ref(new Set());
                 const viewMode = ref('all');
-                
-                // API Proxy Configuration
-                // Default to local server if on localhost, otherwise empty (requires user input)
-                const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                const apiBaseUrl = ref(localStorage.getItem('api_base_url') || (isLocal ? '' : ''));
-                const showSettings = ref(false);
-
-                const saveApiSettings = () => {
-                    localStorage.setItem('api_base_url', apiBaseUrl.value);
-                    showSettings.value = false;
-                    fetchData(); // Reload with new API
-                };
-
-                const getApiUrl = (path) => {
-                    // Remove leading slash if apiBaseUrl has trailing slash
-                    let base = apiBaseUrl.value;
-                    if (base && base.endsWith('/')) base = base.slice(0, -1);
-                    return `${base}${path}`;
-                };
 
                 const loadSelection = () => {
                     const saved = localStorage.getItem('selectedCoins');
@@ -1463,9 +1396,7 @@
                 // ==================================================================================
                 const fetchSentiment = async () => {
                     try {
-                        // 使用配置的 API 地址
-                        const url = getApiUrl('/api/fng');
-                        const res = await fetch(url);
+                        const res = await fetch('https://api.alternative.me/fng/?limit=2');
                         const json = await res.json();
                         if (json.data && json.data.length >= 2) {
                             const today = json.data[0];
@@ -1645,7 +1576,7 @@
                                     if (timeframes.value.indexOf(tf) > 0) {
                                         await new Promise(r => setTimeout(r, 300));
                                     }
-                                    ohlc = await fetchMexcCandles(coin.instId, tf.bar, 300, apiBaseUrl.value);
+                                    ohlc = await fetchOkxCandles(coin.instId, tf.bar, 300);
                                     if (ohlc) break;
                                 } catch (err) {
                                     if (err.message.includes('429')) {
@@ -2037,16 +1968,7 @@
                 const fetchData = async () => {
                     loading.value = true;
                     try {
-                        // Check if API URL is configured (unless localhost)
-                        if (!isLocal && !apiBaseUrl.value) {
-                            showSettings.value = true;
-                            // Don't throw error, just stop loading to show empty state with settings open
-                            loading.value = false;
-                            return; 
-                        }
-
-                        const url = getApiUrl('/api/tickers');
-                        const tickers = await fetchMexcTickers(url);
+                        const tickers = await fetchOkxTickers();
                         const usdtTickers = tickers.filter(t =>
                             typeof t.instId === 'string' && t.instId.endsWith('-USDT')
                         );
@@ -2147,7 +2069,7 @@
                                     
                                     while (retries > 0) {
                                         try {
-                                            ohlc = await fetchMexcCandles(task.instId, task.bar, 100, apiBaseUrl.value);
+                                            ohlc = await fetchOkxCandles(task.instId, task.bar);
                                             break; // Success
                                         } catch (err) {
                                             if (err.message && err.message.includes('429')) {
@@ -2242,11 +2164,7 @@
                     viewMode,
                     toggleSelection,
                     isSelected,
-                    toggleViewMode,
-                    apiBaseUrl,
-                    showSettings,
-                    saveApiSettings,
-                    isLocal
+                    toggleViewMode
                 };
             }
         }).mount('#app');
